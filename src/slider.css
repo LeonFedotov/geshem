@@ -1,0 +1,23 @@
+.rangeslider-horizontal {
+	/*position: relative;
+    width: 80%;
+    bottom: 80px;
+    margin: 0 auto;*/
+  position: absolute;
+  bottom: 8vh;
+  width: 30vw;
+  margin-left: 35vw;
+  height:20px;
+}
+.rangeslider-horizontal .rangeslider__handle:after {
+	visibility: hidden;
+ }
+.rangeslider-horizontal .rangeslider__handle {
+	outline: none;
+	height: 40px;
+	width: 40px;
+}
+
+.rangeslider-horizontal .rangeslider__fill {
+	background-color: #3498db;
+}
