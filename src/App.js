@@ -3,8 +3,9 @@ import ReactMapboxGl, { Layer } from 'react-mapbox-gl'
 import moment from 'moment-timezone'
 import request from 'superagent'
 import Slider from 'react-rangeslider'
+
 import 'react-rangeslider/lib/index.css'
-import './slider.css'
+import './app.css'
 import debug from 'debug'
 const log = debug('app:log')
 const Map = ReactMapboxGl({
@@ -27,8 +28,10 @@ const rasterCoords = {
 class App extends Component {
   state = {
     images: void 0,
-    res: 280,
-    slider: 9
+    res: '140',
+    slider: 9,
+    zoom: [6.3],
+    center: [35, 31.9],
   }
 
   datetime() {
@@ -43,14 +46,27 @@ class App extends Component {
   }
 
   getDate() {
-    return this.state.images ? this.datetime.format('YYYY-MM-DD') : ''
+    return this.state.images ? this.datetime().format('YYYY-MM-DD') : ''
   }
 
   getTime() {
-    return this.state.images ? this.datetime.format('HH:mm') : ''
+    return this.state.images ? this.datetime().format('HH:mm') : ''
   }
-
-  loadImages = (map) => {
+  move = (map) => this.setState({
+    ...this.state,
+    center: [map.getCenter().lng, map.getCenter().lat]
+  })
+  zoom = (map) => {
+    const {res, slider} = this.state
+    const nextRes = map.getZoom() > 7 ? '280' : '140'
+    nextRes !== res && map.removeLayer(`radar-${res}-${slider}`)//, 'raster-opacity', 0)
+    this.setState({
+      ...this.state,
+      zoom: [map.getZoom()],
+      res: nextRes
+    })
+  }
+  styleLoaded = (map) => {
     request
       .get('/images.json')
       .set('withCredentials', true)
@@ -70,26 +86,25 @@ class App extends Component {
   }
 
   radarLayer() {
-    const {images, res: currentResolution, slider} = this.state
-    return images ? [...['140', '280'].map((resolution) =>
-      images[resolution].map((image, index) => {
-        const LayerProps = {
-          id: `radar-${resolution}-${index}`,
-          sourceId: `radar-${resolution}-${index}`,
-          type: 'raster',
-          paint: {
-            'raster-opacity': slider === index && resolution === ''+currentResolution ? .85 : 0,
-            'raster-opacity-transition': {
-              'duration': 0
-            }
+    const {res, images = {[res]:[]}, slider} = this.state
+    return images[res].map((image, index) => {
+      const LayerProps = {
+        id: `radar-${res}-${index}`,
+        sourceId: `radar-${res}-${index}`,
+        type: 'raster',
+        paint: {
+          'raster-opacity': slider === index ? .85 : 0,
+          'raster-opacity-transition': {
+            'duration': 0
           }
         }
-        return <Layer key={`layer_${index}`} {...LayerProps}/>
-      }))
-    ] : null
+      }
+      return <Layer key={`layer_${index}`} {...LayerProps}/>
+    })
   }
   handleOnChange = (slider) => this.setState({...this.state, slider})
   render() {
+    const {zoom, center} = this.state
     const mapProps = {
       container: 'map',
       style: 'mapbox://styles/mapbox/dark-v9',
@@ -97,18 +112,23 @@ class App extends Component {
         height: '100vh',
         width: '100vh'
       },
-      onStyleLoad: this.loadImages,
+      onStyleLoad: this.styleLoaded,
+      onZoom: this.zoom,
+      onMoveEnd: this.move,
       maxZoom: 10,
       minZoom: 5,
-      zoom: [6.3],
-      center: [35, 31.9],
+      zoom,
+      center,
       hash: false
     }
     const {slider} = this.state
     return (
       <div>
-
         <Map {...mapProps}>{this.radarLayer()}</Map>
+        <div className="datetime">
+          <div className="date">{this.getDate()}</div>
+          <div className="time">{this.getTime()}</div>
+        </div>
         <Slider
           tooltip={false}
           min={0}
